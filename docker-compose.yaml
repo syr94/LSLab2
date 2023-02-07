@@ -1,0 +1,59 @@
+version: "3.9"
+services:
+  postgres:
+    image: postgres:13.3
+    container_name: pgdb
+    environment:
+      PGUSER: "web"
+      POSTGRES_DB: "web"
+      POSTGRES_USER: "web"
+      POSTGRES_PASSWORD: "web"
+      PGDATA: "/var/lib/postgresql/data/pgdata"
+    volumes:
+      - ./database:/docker-entrypoint-initdb.d/
+#      - .:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U web -d web"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 4G
+    networks:
+      back:
+        ipv4_address: 172.16.238.3
+      default:
+
+  backend: 
+    image: "backend"
+    build: "./back/"
+    container_name: backend
+    ports:
+      - "8080:80"
+    volumes:
+      - "./test_docker/html:/usr/share/nginx/html"
+    networks:
+      back:
+        ipv4_address: 172.16.238.2  
+      default:
+
+networks:
+#Internal-only network for proper nginx proxying and ssh
+  back:
+    driver: bridge
+    enable_ipv6: false
+    internal: true
+    ipam:
+     driver: default
+     config:
+       - subnet: 172.16.238.0/24
+#External network actually
+  default:
+    driver: bridge  
